@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package STTStream;
+option go_package = "./STTStream";
+
+service stream {
+  rpc createStreamRPC (streamMessage) returns (streamMessage) {}
+  rpc sendStreamRPC (stream streamBuffers) returns (stream streamMessage) {}
+  rpc endStreamRPC (streamMessage) returns (streamMessage) {}
+}
+
+message streamMessage {
+  string callId = 1;
+  string message = 2;
+}
+
+message streamBuffers {
+  string callId = 1;
+  bytes buffers = 2;
+}
+

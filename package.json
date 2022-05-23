@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/speech": "^4.10.2",
+    "@grpc/grpc-js": "^1.6.7",
+    "@grpc/proto-loader": "^0.6.12",
     "chalk": "^5.0.1",
     "node-record-lpcm16": "^1.0.1",
     "stream": "0.0.2"
