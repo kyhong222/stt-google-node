@@ -3,6 +3,7 @@ const speech = require("@google-cloud/speech").v1p1beta1;
 const PROTO_PATH = "src/protos/STTStream.proto";
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
+const fs = require("fs");
 
 let encoding;
 let sampleRateHertz;
@@ -20,19 +21,6 @@ let port;
 let projectId;
 let credentialFilename = "googleCredential.json";
 let bufferSplitSize;
-
-const request = {
-  config: {
-    encoding: encoding,
-    sampleRateHertz: sampleRateHertz,
-    languageCode: languageCode,
-    profanityFilter: profanityFilter,
-    enableWordTimeOffsets: enableWordTimeOffsets,
-    speechContexts: speechContexts,
-  },
-  interimResults: interimResults, // If you want interim results, set this to true
-  singleUtterance: singleUtterance,
-};
 
 const authCredential = {
   projectId: projectId,
@@ -69,15 +57,29 @@ function readConfig() {
 }
 
 function startRecognitionStream(speechClient, callId) {
+  const request = {
+    config: {
+      encoding: encoding,
+      sampleRateHertz: sampleRateHertz,
+      languageCode: languageCode,
+      profanityFilter: profanityFilter,
+      enableWordTimeOffsets: enableWordTimeOffsets,
+      speechContexts: speechContexts,
+    },
+    interimResults: interimResults, // If you want interim results, set this to true
+    singleUtterance: singleUtterance,
+  };
+
   STTStreams[callId] = speechClient
     .streamingRecognize(request)
     .on("error", console.error)
     .on("data", (data) => {
+      // STT 디버그 로그
       // console.log(data);
-      if (data.results.length) {
-        console.log(data.results[0].alternatives[0].transcript);
-        console.log(data.results[0].isFinal);
-      }
+      // if (data.results.length) {
+      //   console.log(data.results[0].alternatives[0].transcript);
+      //   console.log(data.results[0].isFinal);
+      // }
 
       if (data.results[0] && data.results[0].isFinal) {
         STTTranscrips[callId] = {
@@ -91,7 +93,7 @@ function startRecognitionStream(speechClient, callId) {
       if (data.results[0] && data.results[0].isFinal) {
         stopRecognitionStream(callId);
         startRecognitionStream(speechClient, callId);
-        console.log("restarted stream serverside");
+        // console.log("restarted stream serverside");
       }
     });
 }
@@ -154,7 +156,8 @@ function createStreamRPC(call, callback) {
 function sendStreamRPC(call) {
   // console.log(call);
   call.on("data", function (streamBuffers) {
-    console.log(new Date(), `Receive ${streamBuffers.buffers.length} bytes`);
+    // 버퍼 캡쳐 로그기능
+    // console.log(new Date(), `Receive ${streamBuffers.buffers.length} bytes`);
 
     if (STTStreams[streamBuffers.callId] !== undefined) {
       // console.log("origin:", streamBuffers.buffers);
@@ -172,7 +175,7 @@ function sendStreamRPC(call) {
         callId: streamBuffers.callId,
         message: STTTranscrips[streamBuffers.callId].transcript,
       };
-      console.log(responseStreamMessage);
+      console.log(new Date(), responseStreamMessage);
 
       call.write(responseStreamMessage);
       STTTranscrips[streamBuffers.callId] = {
