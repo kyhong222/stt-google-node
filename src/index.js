@@ -4,32 +4,69 @@ const PROTO_PATH = "src/protos/STTStream.proto";
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 
-const encoding = "LINEAR16";
-const sampleRateHertz = 8000;
-const languageCode = "ko-KR"; //en-US
+let encoding;
+let sampleRateHertz;
+let languageCode;
+let profanityFilter;
+let enableWordTimeOffsets;
+
+let interimResults;
+let singleUtterance;
+
+let speechContexts;
+
+let port;
+
+let projectId;
+let credentialFilename = "googleCredential.json";
+let bufferSplitSize;
 
 const request = {
   config: {
     encoding: encoding,
     sampleRateHertz: sampleRateHertz,
     languageCode: languageCode,
-    profanityFilter: false,
-    enableWordTimeOffsets: true,
-    // speechContexts: [{
-    //     phrases: ["hoful","shwazil"]
-    //    }] // add your own speech context for better recognition
+    profanityFilter: profanityFilter,
+    enableWordTimeOffsets: enableWordTimeOffsets,
+    speechContexts: speechContexts,
   },
-  interimResults: true, // If you want interim results, set this to true
-  singleUtterance: true,
+  interimResults: interimResults, // If you want interim results, set this to true
+  singleUtterance: singleUtterance,
 };
 
 const authCredential = {
-  projectId: "still-manifest-340609",
-  keyFilename: "/home/daydream/stt-google-node/googleCredential.json",
+  projectId: projectId,
+  keyFilename: credentialFilename,
 };
 
 const STTStreams = new Map();
 const STTTranscrips = new Map();
+
+function readConfig() {
+  const jsonFile = fs.readFileSync("config.json", "utf8");
+  const jsonData = JSON.parse(jsonFile);
+  // console.log(jsonData);
+  console.log("config.json read successfully");
+
+  const googleCredential = fs.readFileSync("googleCredential.json", "utf8");
+  const googleCredentialData = JSON.parse(googleCredential);
+  console.log("googleCredential.json read successfully");
+
+  projectId = googleCredentialData.project_id;
+
+  encoding = jsonData.encoding || "LINEAR16";
+  sampleRateHertz = parseInt(jsonData.sampleRateHertz) || 8000;
+  languageCode = jsonData.languageCode || "ko-KR"; // en-US is able
+  profanityFilter = jsonData.profanityFilter || false;
+  enableWordTimeOffsets = jsonData.enableWordTimeOffsets || true;
+  speechContexts = jsonData.speechContexts || [];
+
+  interimResults = true; // essential
+  singleUtterance = true; // essential
+
+  port = parseInt(jsonData.port) || 50051;
+  bufferSplitSize = parseInt(jsonData.bufferSplitSize) || 1600;
+}
 
 function startRecognitionStream(speechClient, callId) {
   STTStreams[callId] = speechClient
@@ -67,6 +104,7 @@ function stopRecognitionStream(callId) {
 }
 
 function app() {
+  readConfig();
   // gRPC init
   const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
@@ -88,14 +126,14 @@ function app() {
   });
 
   server.bindAsync(
-    "0.0.0.0:50051",
+    `0.0.0.0:${port}`,
     grpc.ServerCredentials.createInsecure(),
     () => {
       server.start();
     }
   );
 
-  console.log(`STT server is listening on ${50051}`);
+  console.log(`STT server is listening on ${port}`);
   // console.log(server);
 }
 
@@ -168,7 +206,7 @@ const createStream = () => {
 };
 
 function bufferSplit(buffers) {
-  const splitSize = 1600;
+  const splitSize = bufferSplitSize;
   const chunkSize = Math.ceil(buffers.length / splitSize);
   const chunk = [];
   for (let i = 0; i < chunkSize - 1; i++) {
