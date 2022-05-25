@@ -135,7 +135,7 @@ function app() {
     }
   );
 
-  console.log(`STT server is listening on ${port}`);
+  console.log(`Google STT server is listening on ${port}`);
   // console.log(server);
 }
 
