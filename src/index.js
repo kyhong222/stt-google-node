@@ -75,7 +75,7 @@ function startRecognitionStream(speechClient, callId) {
     .on("error", console.error)
     .on("data", (data) => {
       // STT 디버그 로그
-      // console.log(data);
+      // console.log("data", data);
       // if (data.results.length) {
       //   console.log(data.results[0].alternatives[0].transcript);
       //   console.log(data.results[0].isFinal);
@@ -90,10 +90,13 @@ function startRecognitionStream(speechClient, callId) {
 
       // if end of utterance, let's restart stream
       // this is a small hack. After 65 seconds of silence, the stream will still throw an error for speech length limit
-      if (data.results[0] && data.results[0].isFinal) {
+      if (
+        (data.results[0] && data.results[0].isFinal) ||
+        data.speechEventType === "END_OF_SINGLE_UTTERANCE"
+      ) {
         stopRecognitionStream(callId);
         startRecognitionStream(speechClient, callId);
-        // console.log("restarted stream serverside");
+        console.log(`restarted stream ${callId}`);
       }
     });
 }
@@ -103,6 +106,14 @@ function stopRecognitionStream(callId) {
     STTStreams[callId].end();
   }
   STTStreams[callId] = undefined;
+}
+
+function restartRecognitionStream(callId) {
+  stopRecognitionStream(callId);
+  newClient = createStream();
+  STTStreams[callId] = newClient;
+  startRecognitionStream(newClient, callId);
+  console.log(`restarted stream ${callId}`);
 }
 
 function app() {
@@ -125,6 +136,7 @@ function app() {
     createStreamRPC: createStreamRPC,
     sendStreamRPC: sendStreamRPC,
     endStreamRPC: endStreamRPC,
+    restartStreamRPC: restartStreamRPC,
   });
 
   server.bindAsync(
@@ -195,6 +207,16 @@ function endStreamRPC(call, callback) {
   callback(null, {
     callId: call.request.callId,
     message: `STT stream ${call.request.callId} was ended successfully`,
+  });
+}
+
+function restartStreamRPC(call, callback) {
+  console.log(call.request);
+  const key = call.request.callId;
+  restartRecognitionStream(key);
+  callback(null, {
+    callId: call.request.callId,
+    message: `STT stream ${call.request.callId} was restart successfully`,
   });
 }
 

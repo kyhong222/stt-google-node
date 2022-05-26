@@ -7,6 +7,7 @@ service stream {
   rpc createStreamRPC (streamMessage) returns (streamMessage) {}
   rpc sendStreamRPC (stream streamBuffers) returns (stream streamMessage) {}
   rpc endStreamRPC (streamMessage) returns (streamMessage) {}
+  rpc restartStreamRPC (streamMessage) returns (streamMessage) {}
 }
 
 message streamMessage {
