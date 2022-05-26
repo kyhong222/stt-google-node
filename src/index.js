@@ -206,7 +206,7 @@ function endStreamRPC(call, callback) {
   stopRecognitionStream(call.request.callId);
   callback(null, {
     callId: call.request.callId,
-    message: `STT stream ${call.request.callId} was ended successfully`,
+    message: `Google STT stream ${call.request.callId} was ended successfully`,
   });
 }
 
@@ -216,7 +216,7 @@ function restartStreamRPC(call, callback) {
   restartRecognitionStream(key);
   callback(null, {
     callId: call.request.callId,
-    message: `STT stream ${call.request.callId} was restart successfully`,
+    message: `Google STT stream ${call.request.callId} was restart successfully`,
   });
 }
 
